@@ -1,0 +1,545 @@
+<!DOCTYPE html>
+<html lang="ca">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Cub de Rubik — Solució en 6 Passos</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=DM+Sans:wght@300;400;600&display=swap');
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --W: #f0f0f0;
+    --Y: #FFD600;
+    --R: #E53935;
+    --O: #FB8C00;
+    --B: #1565C0;
+    --G: #2E7D32;
+    --bg: #0a0a0f;
+    --surface: #12121a;
+    --border: #2a2a3a;
+    --text: #e8e8f0;
+    --muted: #6a6a8a;
+    --accent: #7c6af5;
+  }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'DM Sans', sans-serif;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 2rem 1rem 4rem;
+  }
+
+  h1 {
+    font-family: 'Space Mono', monospace;
+    font-size: clamp(1.2rem, 3vw, 1.8rem);
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    margin-bottom: 0.3rem;
+    color: var(--text);
+  }
+
+  .subtitle {
+    font-size: 0.9rem;
+    color: var(--muted);
+    margin-bottom: 2rem;
+    font-family: 'Space Mono', monospace;
+    letter-spacing: 0.05em;
+  }
+
+  .stage {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2rem;
+    width: 100%;
+    max-width: 900px;
+  }
+
+  /* Step indicator */
+  .steps-row {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+  }
+
+  .step-dot {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    border: 1.5px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: 'Space Mono', monospace;
+    font-size: 0.75rem;
+    color: var(--muted);
+    transition: all 0.4s ease;
+    cursor: pointer;
+  }
+  .step-dot.active {
+    border-color: var(--accent);
+    color: var(--accent);
+    box-shadow: 0 0 0 4px rgba(124,106,245,0.15);
+  }
+  .step-dot.done {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: white;
+  }
+  .step-connector {
+    width: 24px;
+    height: 1.5px;
+    background: var(--border);
+    transition: background 0.4s ease;
+  }
+  .step-connector.done { background: var(--accent); }
+
+  /* Cube scene */
+  .cube-scene {
+    perspective: 700px;
+    width: 220px;
+    height: 220px;
+    cursor: grab;
+    user-select: none;
+  }
+  .cube-scene:active { cursor: grabbing; }
+
+  .cube {
+    width: 100%;
+    height: 100%;
+    position: relative;
+    transform-style: preserve-3d;
+    transform: rotateX(-28deg) rotateY(-40deg);
+    transition: transform 0.7s cubic-bezier(0.34,1.56,0.64,1);
+  }
+
+  .face {
+    position: absolute;
+    width: 200px;
+    height: 200px;
+    left: 10px;
+    top: 10px;
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    grid-template-rows: repeat(3, 1fr);
+    gap: 4px;
+    padding: 4px;
+    border-radius: 6px;
+    background: #111;
+  }
+
+  .face.front  { transform: translateZ(100px); }
+  .face.back   { transform: rotateY(180deg) translateZ(100px); }
+  .face.left   { transform: rotateY(-90deg) translateZ(100px); }
+  .face.right  { transform: rotateY(90deg)  translateZ(100px); }
+  .face.top    { transform: rotateX(90deg)  translateZ(100px); }
+  .face.bottom { transform: rotateX(-90deg) translateZ(100px); }
+
+  .cell {
+    border-radius: 3px;
+    transition: background-color 0.5s ease;
+  }
+
+  /* Info panel */
+  .info-panel {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 1.5rem 2rem;
+    max-width: 420px;
+    width: 100%;
+    text-align: center;
+  }
+
+  .step-label {
+    font-family: 'Space Mono', monospace;
+    font-size: 0.7rem;
+    color: var(--accent);
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    margin-bottom: 0.5rem;
+  }
+
+  .step-title {
+    font-size: 1.25rem;
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+    color: var(--text);
+  }
+
+  .step-desc {
+    font-size: 0.9rem;
+    color: var(--muted);
+    line-height: 1.6;
+  }
+
+  /* Buttons */
+  .controls {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+  }
+
+  button {
+    font-family: 'DM Sans', sans-serif;
+    font-size: 0.9rem;
+    font-weight: 600;
+    padding: 0.6rem 1.4rem;
+    border-radius: 8px;
+    border: 1.5px solid var(--border);
+    cursor: pointer;
+    transition: all 0.2s ease;
+    letter-spacing: 0.02em;
+  }
+
+  #btn-prev {
+    background: transparent;
+    color: var(--muted);
+  }
+  #btn-prev:hover:not(:disabled) {
+    border-color: var(--muted);
+    color: var(--text);
+  }
+  #btn-prev:disabled { opacity: 0.3; cursor: default; }
+
+  #btn-next {
+    background: var(--accent);
+    color: white;
+    border-color: var(--accent);
+  }
+  #btn-next:hover:not(:disabled) {
+    background: #9180f8;
+    border-color: #9180f8;
+    transform: translateY(-1px);
+  }
+  #btn-next:disabled { opacity: 0.4; cursor: default; }
+
+  #btn-reset {
+    background: transparent;
+    color: var(--muted);
+    font-size: 0.8rem;
+    padding: 0.5rem 1rem;
+  }
+  #btn-reset:hover { color: var(--text); border-color: var(--muted); }
+
+  .completion-msg {
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.5rem;
+    animation: fadeIn 0.6s ease;
+  }
+  .completion-msg.visible { display: flex; }
+  .trophy { font-size: 2.5rem; }
+  .completion-msg p { color: var(--muted); font-size: 0.85rem; }
+
+  @keyframes fadeIn {
+    from { opacity: 0; transform: scale(0.9); }
+    to   { opacity: 1; transform: scale(1); }
+  }
+
+  /* Animated ring on completion */
+  @keyframes spin-ring {
+    to { transform: rotateX(-28deg) rotateY(320deg); }
+  }
+  .cube.solving {
+    animation: spin-ring 0.7s cubic-bezier(0.34,1.56,0.64,1) forwards;
+  }
+
+  .drag-hint {
+    font-size: 0.72rem;
+    color: var(--muted);
+    font-family: 'Space Mono', monospace;
+    letter-spacing: 0.05em;
+    opacity: 0.7;
+  }
+</style>
+</head>
+<body>
+
+<h1>Cub de Rubik</h1>
+<p class="subtitle">// solució en 6 passos</p>
+
+<div class="stage">
+
+  <!-- Step dots -->
+  <div class="steps-row" id="steps-row"></div>
+
+  <!-- 3D Cube -->
+  <div class="cube-scene" id="scene">
+    <div class="cube" id="cube">
+      <div class="face front"  id="f-front"></div>
+      <div class="face back"   id="f-back"></div>
+      <div class="face left"   id="f-left"></div>
+      <div class="face right"  id="f-right"></div>
+      <div class="face top"    id="f-top"></div>
+      <div class="face bottom" id="f-bottom"></div>
+    </div>
+  </div>
+
+  <p class="drag-hint">↔ arrossega per rotar</p>
+
+  <!-- Info -->
+  <div class="info-panel">
+    <div id="normal-panel">
+      <p class="step-label" id="step-label"></p>
+      <h2 class="step-title" id="step-title"></h2>
+      <p class="step-desc"  id="step-desc"></p>
+    </div>
+    <div class="completion-msg" id="completion-msg">
+      <div class="trophy">🏆</div>
+      <h2 class="step-title">Cub resolt!</h2>
+      <p>Has completat tots els 6 passos.</p>
+    </div>
+  </div>
+
+  <!-- Controls -->
+  <div class="controls">
+    <button id="btn-prev">← Anterior</button>
+    <button id="btn-next">Següent →</button>
+  </div>
+  <button id="btn-reset">↺ Reinicia</button>
+
+</div>
+
+<script>
+// ── Color constants ──────────────────────────────────────────────
+const W='#e8e8e8', Y='#FFD600', R='#E53935', O='#FB8C00', B='#1E88E5', G='#43A047';
+const X='#2a2a3a'; // scrambled / unknown
+
+// ── Steps definition ─────────────────────────────────────────────
+// Each step defines the state of 6 faces (U, D, F, B, L, R) as 9-cell arrays.
+// Cells top-left to bottom-right.
+
+const STEPS = [
+  {
+    label: 'Inici — pas 0 de 6',
+    title: 'Cub desordenat',
+    desc: 'El cub comença completament barrejat. Cada cara té colors barrejats sense cap patró.',
+    faces: {
+      top:    [O,B,Y, R,G,W, X,Y,R],
+      bottom: [W,Y,G, B,O,R, Y,G,B],
+      front:  [Y,R,B, G,W,O, R,B,Y],
+      back:   [B,O,G, W,R,Y, G,W,O],
+      left:   [G,W,R, Y,B,G, O,R,W],
+      right:  [R,Y,O, W,G,B, B,O,G],
+    }
+  },
+  {
+    label: 'Pas 1 de 6',
+    title: 'Creu blanca',
+    desc: 'Formem una creu blanca a la cara superior. Els quatre costats de la creu han de coincidir amb el color central de cada cara lateral.',
+    faces: {
+      top:    [X,W,X, W,W,W, X,W,X],
+      bottom: [W,Y,G, B,O,R, Y,G,B],
+      front:  [Y,W,B, G,W,O, R,B,Y],
+      back:   [B,W,G, W,R,Y, G,W,O],
+      left:   [G,W,R, Y,B,G, O,R,W],
+      right:  [R,W,O, W,G,B, B,O,G],
+    }
+  },
+  {
+    label: 'Pas 2 de 6',
+    title: 'Cara blanca completa',
+    desc: 'Col·loquem les quatre cantonades blanques al seu lloc. La cara superior queda completament blanca.',
+    faces: {
+      top:    [W,W,W, W,W,W, W,W,W],
+      bottom: [W,Y,G, B,O,R, Y,G,B],
+      front:  [W,W,W, G,W,O, R,B,Y],
+      back:   [W,W,W, W,R,Y, G,W,O],
+      left:   [W,W,W, Y,B,G, O,R,W],
+      right:  [W,W,W, W,G,B, B,O,G],
+    }
+  },
+  {
+    label: 'Pas 3 de 6',
+    title: 'Capa del mig',
+    desc: 'Resolem la capa central inserint les quatre peces de les arestes als seus llocs correctes.',
+    faces: {
+      top:    [W,W,W, W,W,W, W,W,W],
+      bottom: [W,Y,G, B,O,R, Y,G,B],
+      front:  [W,W,W, W,W,W, R,B,Y],
+      back:   [W,W,W, W,W,W, G,W,O],
+      left:   [W,W,W, W,W,W, O,R,W],
+      right:  [W,W,W, W,W,W, B,O,G],
+    }
+  },
+  {
+    label: 'Pas 4 de 6',
+    title: 'Creu groga',
+    desc: 'Orientem la cara inferior (groga) formant una creu. Usem l\'algorisme F R U R\' U\' F\'.',
+    faces: {
+      top:    [W,W,W, W,W,W, W,W,W],
+      bottom: [X,Y,X, Y,Y,Y, X,Y,X],
+      front:  [W,W,W, W,W,W, R,R,R],
+      back:   [W,W,W, W,W,W, O,O,O],
+      left:   [W,W,W, W,W,W, G,G,G],
+      right:  [W,W,W, W,W,W, B,B,B],
+    }
+  },
+  {
+    label: 'Pas 5 de 6',
+    title: 'Cantonades grogues',
+    desc: 'Col·loquem i orientem les quatre cantonades grogues. Ara la cara groga queda completament groga.',
+    faces: {
+      top:    [W,W,W, W,W,W, W,W,W],
+      bottom: [Y,Y,Y, Y,Y,Y, Y,Y,Y],
+      front:  [W,W,W, W,W,W, R,R,R],
+      back:   [W,W,W, W,W,W, O,O,O],
+      left:   [W,W,W, W,W,W, G,G,G],
+      right:  [W,W,W, W,W,W, B,B,B],
+    }
+  },
+  {
+    label: 'Pas 6 de 6',
+    title: 'Cub resolt! ✓',
+    desc: 'Permutem les capes laterals fins que cada cara sigui d\'un sol color. El cub queda completament resolt!',
+    faces: {
+      top:    [W,W,W, W,W,W, W,W,W],
+      bottom: [Y,Y,Y, Y,Y,Y, Y,Y,Y],
+      front:  [R,R,R, R,R,R, R,R,R],
+      back:   [O,O,O, O,O,O, O,O,O],
+      left:   [G,G,G, G,G,G, G,G,G],
+      right:  [B,B,B, B,B,B, B,B,B],
+    }
+  }
+];
+
+let currentStep = 0;
+
+// ── Render faces ──────────────────────────────────────────────────
+function renderFace(id, cells) {
+  const face = document.getElementById(id);
+  face.innerHTML = '';
+  cells.forEach(color => {
+    const cell = document.createElement('div');
+    cell.className = 'cell';
+    cell.style.background = color;
+    face.appendChild(cell);
+  });
+}
+
+function applyStep(idx) {
+  const s = STEPS[idx];
+  const f = s.faces;
+  renderFace('f-top',    f.top);
+  renderFace('f-bottom', f.bottom);
+  renderFace('f-front',  f.front);
+  renderFace('f-back',   f.back);
+  renderFace('f-left',   f.left);
+  renderFace('f-right',  f.right);
+
+  document.getElementById('step-label').textContent = s.label;
+  document.getElementById('step-title').textContent = s.title;
+  document.getElementById('step-desc').textContent  = s.desc;
+
+  const isDone = idx === STEPS.length - 1;
+  document.getElementById('normal-panel').style.display = isDone ? 'none' : 'block';
+  const comp = document.getElementById('completion-msg');
+  comp.classList.toggle('visible', isDone);
+
+  document.getElementById('btn-prev').disabled = idx === 0;
+  document.getElementById('btn-next').disabled = isDone;
+
+  // Trigger a little cube spin
+  const cube = document.getElementById('cube');
+  cube.classList.add('solving');
+  setTimeout(() => cube.classList.remove('solving'), 700);
+
+  // Update step dots
+  document.querySelectorAll('.step-dot').forEach((dot, i) => {
+    dot.classList.remove('active','done');
+    if (i < idx) dot.classList.add('done');
+    else if (i === idx) dot.classList.add('active');
+  });
+  document.querySelectorAll('.step-connector').forEach((c, i) => {
+    c.classList.toggle('done', i < idx);
+  });
+}
+
+// ── Build step dots ───────────────────────────────────────────────
+function buildDots() {
+  const row = document.getElementById('steps-row');
+  row.innerHTML = '';
+  STEPS.forEach((_, i) => {
+    const dot = document.createElement('div');
+    dot.className = 'step-dot';
+    dot.textContent = i;
+    dot.addEventListener('click', () => { currentStep = i; applyStep(i); });
+    row.appendChild(dot);
+    if (i < STEPS.length - 1) {
+      const conn = document.createElement('div');
+      conn.className = 'step-connector';
+      row.appendChild(conn);
+    }
+  });
+}
+
+// ── Controls ──────────────────────────────────────────────────────
+document.getElementById('btn-next').addEventListener('click', () => {
+  if (currentStep < STEPS.length - 1) { currentStep++; applyStep(currentStep); }
+});
+document.getElementById('btn-prev').addEventListener('click', () => {
+  if (currentStep > 0) { currentStep--; applyStep(currentStep); }
+});
+document.getElementById('btn-reset').addEventListener('click', () => {
+  currentStep = 0;
+  applyStep(0);
+  // Reset cube rotation
+  document.getElementById('cube').style.transform = 'rotateX(-28deg) rotateY(-40deg)';
+});
+
+// ── Drag to rotate ────────────────────────────────────────────────
+let isDragging = false, startX = 0, startY = 0;
+let rotX = -28, rotY = -40;
+
+const scene = document.getElementById('scene');
+const cube  = document.getElementById('cube');
+
+scene.addEventListener('mousedown', e => {
+  isDragging = true; startX = e.clientX; startY = e.clientY;
+});
+window.addEventListener('mousemove', e => {
+  if (!isDragging) return;
+  const dx = e.clientX - startX;
+  const dy = e.clientY - startY;
+  startX = e.clientX; startY = e.clientY;
+  rotY += dx * 0.5;
+  rotX -= dy * 0.5;
+  rotX = Math.max(-80, Math.min(80, rotX));
+  cube.style.transition = 'none';
+  cube.style.transform = `rotateX(${rotX}deg) rotateY(${rotY}deg)`;
+});
+window.addEventListener('mouseup', () => { isDragging = false; cube.style.transition = ''; });
+
+scene.addEventListener('touchstart', e => {
+  isDragging = true;
+  startX = e.touches[0].clientX;
+  startY = e.touches[0].clientY;
+}, {passive:true});
+window.addEventListener('touchmove', e => {
+  if (!isDragging) return;
+  const dx = e.touches[0].clientX - startX;
+  const dy = e.touches[0].clientY - startY;
+  startX = e.touches[0].clientX;
+  startY = e.touches[0].clientY;
+  rotY += dx * 0.5;
+  rotX -= dy * 0.5;
+  rotX = Math.max(-80, Math.min(80, rotX));
+  cube.style.transition = 'none';
+  cube.style.transform = `rotateX(${rotX}deg) rotateY(${rotY}deg)`;
+}, {passive:true});
+window.addEventListener('touchend', () => { isDragging = false; cube.style.transition = ''; });
+
+// ── Init ──────────────────────────────────────────────────────────
+buildDots();
+applyStep(0);
+</script>
+</body>
+</html>

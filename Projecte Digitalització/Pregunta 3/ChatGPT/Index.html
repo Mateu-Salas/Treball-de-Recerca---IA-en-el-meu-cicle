@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="ca">
+<head>
+<meta charset="UTF-8" />
+<title>Rubik Solver en 6 passos</title>
+
+<style>
+  body {
+    margin: 0;
+    font-family: Arial, sans-serif;
+    background: #111;
+    color: white;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+
+  h1 {
+    margin: 20px;
+  }
+
+  #cube {
+    display: grid;
+    grid-template-columns: repeat(12, 30px);
+    grid-template-rows: repeat(9, 30px);
+    gap: 2px;
+    margin-top: 20px;
+  }
+
+  .cell {
+    width: 30px;
+    height: 30px;
+    border-radius: 4px;
+  }
+
+  button {
+    margin-top: 20px;
+    padding: 10px 20px;
+    font-size: 16px;
+    cursor: pointer;
+  }
+</style>
+</head>
+
+<body>
+
+<h1>Rubik desordenat → resolt en 6 passos</h1>
+
+<div id="cube"></div>
+<button onclick="startAnimation()">Iniciar resolució</button>
+
+<script>
+const colors = ["red","green","blue","yellow","orange","white"];
+
+// estat resolt
+const solved = [];
+
+// crear cub (6 cares x 9 quadrats = 54)
+for (let f = 0; f < 6; f++) {
+  for (let i = 0; i < 9; i++) {
+    solved.push(colors[f]);
+  }
+}
+
+// estat desordenat
+let scrambled = [...solved].sort(() => Math.random() - 0.5);
+
+// ordre de correcció (quins quadrats es van arreglant)
+const fixOrder = [...Array(54).keys()].sort(() => Math.random() - 0.5);
+
+const cubeDiv = document.getElementById("cube");
+
+// crea grid
+const cells = [];
+for (let i = 0; i < 54; i++) {
+  const div = document.createElement("div");
+  div.className = "cell";
+  cubeDiv.appendChild(div);
+  cells.push(div);
+}
+
+// mostra estat
+function render(state) {
+  for (let i = 0; i < 54; i++) {
+    cells[i].style.background = state[i];
+  }
+}
+
+// passos de resolució
+let step = 0;
+
+function startAnimation() {
+  step = 0;
+  scrambled = [...solved].sort(() => Math.random() - 0.5);
+  render(scrambled);
+
+  const interval = setInterval(() => {
+    step++;
+
+    let newState = [...scrambled];
+
+    // percentatge de resolució
+    let progress = step / 6;
+
+    for (let i = 0; i < 54; i++) {
+      const index = fixOrder[i];
+
+      if (i < Math.floor(progress * 54)) {
+        newState[index] = solved[index];
+      }
+    }
+
+    render(newState);
+
+    if (step >= 6) {
+      clearInterval(interval);
+      render(solved);
+    }
+
+  }, 800);
+}
+
+// estat inicial
+render(scrambled);
+</script>
+
+</body>
+</html>

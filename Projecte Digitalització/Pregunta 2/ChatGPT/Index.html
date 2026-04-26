@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="ca">
+<head>
+<meta charset="UTF-8" />
+<title>Triple bot i cistella</title>
+<style>
+  body {
+    margin: 0;
+    background: #1e1e1e;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+  }
+
+  canvas {
+    background: #2c3e50;
+    border: 2px solid white;
+  }
+</style>
+</head>
+<body>
+
+<canvas id="game" width="800" height="450"></canvas>
+
+<script>
+const canvas = document.getElementById("game");
+const ctx = canvas.getContext("2d");
+
+// Pilota
+let ball = {
+  x: 100,
+  y: 100,
+  r: 15,
+  vx: 4,
+  vy: 0,
+  gravity: 0.6,
+  bounceCount: 0,
+  inShot: false
+};
+
+// Cistella
+const hoop = {
+  x: 650,
+  y: 200,
+  width: 80,
+  height: 10
+};
+
+let shotStarted = false;
+
+function drawBall() {
+  ctx.beginPath();
+  ctx.fillStyle = "#f39c12";
+  ctx.arc(ball.x, ball.y, ball.r, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.closePath();
+}
+
+function drawHoop() {
+  ctx.fillStyle = "red";
+  ctx.fillRect(hoop.x, hoop.y, hoop.width, hoop.height);
+
+  // suport
+  ctx.strokeStyle = "white";
+  ctx.beginPath();
+  ctx.moveTo(hoop.x + hoop.width, hoop.y);
+  ctx.lineTo(hoop.x + hoop.width, hoop.y + 80);
+  ctx.stroke();
+}
+
+function resetIfNeeded() {
+  if (ball.bounceCount >= 3 && !ball.inShot) {
+    ball.inShot = true;
+
+    // calcular trajectòria cap a la cistella
+    ball.vx = (hoop.x + 20 - ball.x) / 40;
+    ball.vy = -8;
+  }
+}
+
+function update() {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+  drawHoop();
+
+  // moviment
+  if (!ball.inShot) {
+    ball.vy += ball.gravity;
+    ball.x += ball.vx;
+    ball.y += ball.vy;
+
+    // terra
+    if (ball.y + ball.r > canvas.height - 50) {
+      ball.y = canvas.height - 50 - ball.r;
+      ball.vy *= -0.7;
+      ball.bounceCount++;
+
+      resetIfNeeded();
+    }
+  } else {
+    // tir a cistella
+    ball.vy += 0.4;
+    ball.x += ball.vx;
+    ball.y += ball.vy;
+
+    // detecció encert
+    if (
+      ball.x > hoop.x &&
+      ball.x < hoop.x + hoop.width &&
+      ball.y + ball.r > hoop.y &&
+      ball.y < hoop.y + hoop.height
+    ) {
+      ball.vx = 0;
+      ball.vy = 0;
+    }
+  }
+
+  drawBall();
+
+  requestAnimationFrame(update);
+}
+
+update();
+</script>
+
+</body>
+</html>

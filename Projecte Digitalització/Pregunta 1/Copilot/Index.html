@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="ca">
+<head>
+  <meta charset="UTF-8" />
+  <title>Font amb aigua</title>
+  <style>
+    body {
+      margin: 0;
+      height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: radial-gradient(circle at top, #88cfff 0, #1b2840 50%, #050814 100%);
+      font-family: system-ui, sans-serif;
+      color: #fff;
+    }
+
+    .scene {
+      position: relative;
+      width: 500px;
+      height: 400px;
+      display: flex;
+      align-items: flex-end;
+      justify-content: center;
+    }
+
+    /* Base de la font */
+    .fountain-base {
+      position: relative;
+      width: 260px;
+      height: 60px;
+      background: #555;
+      border-radius: 50% 50% 40% 40%;
+      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.6);
+      overflow: hidden;
+    }
+
+    .fountain-base::before {
+      content: "";
+      position: absolute;
+      inset: 10px 20px;
+      border-radius: 50%;
+      background: radial-gradient(circle at 30% 20%, #7fd9ff, #1b5f8f 60%, #0b2a3f 100%);
+    }
+
+    /* Cos central de la font */
+    .fountain-column {
+      position: absolute;
+      bottom: 40px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 60px;
+      height: 120px;
+      background: linear-gradient(to top, #666, #999);
+      border-radius: 30px 30px 10px 10px;
+      box-shadow: 0 0 15px rgba(0, 0, 0, 0.6);
+    }
+
+    .fountain-column::before {
+      content: "";
+      position: absolute;
+      top: -18px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 90px;
+      height: 30px;
+      background: #777;
+      border-radius: 50%;
+      box-shadow: 0 5px 10px rgba(0, 0, 0, 0.5);
+    }
+
+    /* Canvas per a l’aigua */
+    #waterCanvas {
+      position: absolute;
+      bottom: 60px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 260px;
+      height: 260px;
+      pointer-events: none;
+    }
+
+    /* Botó simple per aturar/engegar la font */
+    .controls {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+    }
+
+    .controls button {
+      background: rgba(0, 0, 0, 0.4);
+      border: 1px solid rgba(255, 255, 255, 0.4);
+      color: #fff;
+      padding: 6px 10px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 13px;
+      backdrop-filter: blur(4px);
+    }
+
+    .controls button:hover {
+      background: rgba(255, 255, 255, 0.1);
+    }
+  </style>
+</head>
+<body>
+  <div class="scene">
+    <canvas id="waterCanvas"></canvas>
+
+    <div class="fountain-column"></div>
+    <div class="fountain-base"></div>
+
+    <div class="controls">
+      <button id="toggleBtn">Atura la font</button>
+    </div>
+  </div>
+
+  <script>
+    const canvas = document.getElementById("waterCanvas");
+    const ctx = canvas.getContext("2d");
+
+    // Ajustar mida real del canvas a la mida CSS
+    function resizeCanvas() {
+      const rect = canvas.getBoundingClientRect();
+      canvas.width = rect.width * window.devicePixelRatio;
+      canvas.height = rect.height * window.devicePixelRatio;
+      ctx.scale(window.devicePixelRatio, window.devicePixelRatio);
+    }
+    resizeCanvas();
+    window.addEventListener("resize", resizeCanvas);
+
+    const particles = [];
+    const maxParticles = 220;
+    let running = true;
+
+    class Particle {
+      constructor() {
+        this.reset();
+      }
+
+      reset() {
+        // Punt d’origen de l’aigua (centre de la columna)
+        const rect = canvas.getBoundingClientRect();
+        this.x = rect.width / 2;
+        this.y = rect.height * 0.9;
+
+        // Velocitat inicial cap amunt amb una mica d’angle
+        const angle = (Math.random() * Math.PI) - Math.PI / 2; // al voltant de vertical
+        const speed = 4 + Math.random() * 3;
+        this.vx = Math.cos(angle) * speed * 0.4;
+        this.vy = -Math.abs(Math.sin(angle) * speed);
+
+        this.radius = 2 + Math.random() * 2;
+        this.life = 0;
+        this.maxLife = 60 + Math.random() * 40;
+        this.alpha = 0.6 + Math.random() * 0.4;
+      }
+
+      update() {
+        this.life++;
+        // Gravetat
+        this.vy += 0.15;
+        this.x += this.vx;
+        this.y += this.vy;
+
+        // Lleugera pèrdua d’alfa amb el temps
+        this.alpha *= 0.985;
+
+        // Si cau per sota o esgota vida, es reinicia
+        const rect = canvas.getBoundingClientRect();
+        if (this.y > rect.height || this.life > this.maxLife || this.alpha < 0.05) {
+          this.reset();
+        }
+      }
+
+      draw(ctx) {
+        ctx.beginPath();
+        const gradient = ctx.createRadialGradient(
+          this.x, this.y, 0,
+          this.x, this.y, this.radius * 2
+        );
+        gradient.addColorStop(0, `rgba(180, 230, 255, ${this.alpha})`);
+        gradient.addColorStop(1, `rgba(0, 120, 200, 0)`);
+        ctx.fillStyle = gradient;
+        ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+
+    function initParticles() {
+      particles.length = 0;
+      for (let i = 0; i < maxParticles; i++) {
+        particles.push(new Particle());
+      }
+    }
+
+    initParticles();
+
+    function animate() {
+      if (!running) {
+        requestAnimationFrame(animate);
+        return;
+      }
+
+      const rect = canvas.getBoundingClientRect();
+      ctx.clearRect(0, 0, rect.width, rect.height);
+
+      // Lleuger efecte de “blur”/brillantor
+      ctx.fillStyle = "rgba(0, 0, 0, 0.05)";
+      ctx.fillRect(0, 0, rect.width, rect.height);
+
+      for (const p of particles) {
+        p.update();
+        p.draw(ctx);
+      }
+
+      requestAnimationFrame(animate);
+    }
+
+    animate();
+
+    // Botó per aturar/engegar la font
+    const toggleBtn = document.getElementById("toggleBtn");
+    toggleBtn.addEventListener("click", () => {
+      running = !running;
+      toggleBtn.textContent = running ? "Atura la font" : "Engega la font";
+      if (running) {
+        animate();
+      }
+    });
+  </script>
+</body>
+</html>

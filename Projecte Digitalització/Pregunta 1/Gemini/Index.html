@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="ca">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simulació de Font d'Aigua</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            background: linear-gradient(to bottom, #1a2a6c, #b21f1f, #fdbb2d);
+            display: flex;
+            justify-content: center;
+            align-items: flex-end;
+            height: 100vh;
+        }
+
+        canvas {
+            display: block;
+        }
+
+        .controls {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            color: white;
+            font-family: sans-serif;
+            background: rgba(0, 0, 0, 0.3);
+            padding: 15px;
+            border-radius: 8px;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="controls">
+        <p>Font d'Aigua amb Partícules</p>
+        <small>L'aigua brolla i reacciona a la gravetat</small>
+    </div>
+
+    <canvas id="fontCanvas"></canvas>
+
+    <script>
+        const canvas = document.getElementById('fontCanvas');
+        const ctx = canvas.getContext('2d');
+
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+
+        const particles = [];
+        const gravity = 0.15; // Força cap avall
+
+        class Particle {
+            constructor() {
+                this.x = canvas.width / 2; // Origen al centre horitzontal
+                this.y = canvas.height - 50; // Origen a la base
+                
+                // Velocitat aleatòria per crear l'efecte de "raig"
+                this.vx = Math.random() * 4 - 2; 
+                this.vy = Math.random() * -10 - 5; 
+                
+                this.radius = Math.random() * 3 + 1;
+                this.color = `rgba(173, 216, 230, ${Math.random()})`; // Blau clar amb transparència
+                this.life = 0;
+                this.maxLife = Math.random() * 100 + 50;
+            }
+
+            draw() {
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+                ctx.fillStyle = this.color;
+                ctx.fill();
+            }
+
+            update() {
+                this.vy += gravity; // Apliquem gravetat a la velocitat vertical
+                this.x += this.vx;
+                this.y += this.vy;
+                this.life++;
+
+                // Si la partícula toca el "terra" o mor, la reiniciem
+                if (this.y > canvas.height - 20 || this.life > this.maxLife) {
+                    this.reset();
+                }
+            }
+
+            reset() {
+                this.x = canvas.width / 2;
+                this.y = canvas.height - 50;
+                this.vx = Math.random() * 4 - 2;
+                this.vy = Math.random() * -10 - 8;
+                this.life = 0;
+            }
+        }
+
+        // Creem un grup inicial de partícules
+        for (let i = 0; i < 300; i++) {
+            particles.push(new Particle());
+        }
+
+        function animate() {
+            // Efecte de rastre (trail) per fer l'aigua més fluida
+            ctx.fillStyle = 'rgba(26, 42, 108, 0.2)'; 
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            particles.forEach(p => {
+                p.update();
+                p.draw();
+            });
+
+            requestAnimationFrame(animate);
+        }
+
+        // Redimensionar si canvia la finestra
+        window.addEventListener('resize', () => {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        });
+
+        animate();
+    </script>
+</body>
+</html>

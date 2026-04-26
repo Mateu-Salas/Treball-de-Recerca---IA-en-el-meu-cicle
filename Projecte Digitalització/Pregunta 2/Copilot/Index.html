@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="ca">
+<head>
+  <meta charset="UTF-8" />
+  <title>Animació pilota de bàsquet</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      background: #1b1b1b;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      font-family: system-ui, sans-serif;
+      color: #fff;
+    }
+
+    .scene {
+      position: relative;
+      width: 600px;
+      height: 400px;
+      background: linear-gradient(#222 60%, #3b2a1a 60%);
+      border-radius: 12px;
+      overflow: hidden;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6);
+    }
+
+    /* Terra / línia */
+    .floor-line {
+      position: absolute;
+      bottom: 60px;
+      left: 0;
+      width: 100%;
+      height: 4px;
+      background: #f5f5f5;
+      opacity: 0.4;
+    }
+
+    /* Cistella */
+    .hoop-stand {
+      position: absolute;
+      right: 80px;
+      bottom: 60px;
+      width: 10px;
+      height: 160px;
+      background: #c0c0c0;
+    }
+
+    .backboard {
+      position: absolute;
+      right: 40px;
+      top: 60px;
+      width: 120px;
+      height: 80px;
+      background: #f5f5f5;
+      border: 4px solid #e0e0e0;
+      box-shadow: 0 0 0 4px #ff5a36 inset;
+    }
+
+    .rim {
+      position: absolute;
+      right: 40px;
+      top: 130px;
+      width: 80px;
+      height: 8px;
+      background: #ff5a36;
+      border-radius: 4px;
+    }
+
+    .net {
+      position: absolute;
+      right: 40px;
+      top: 138px;
+      width: 80px;
+      height: 60px;
+      border-left: 2px solid rgba(255, 255, 255, 0.6);
+      border-right: 2px solid rgba(255, 255, 255, 0.6);
+      border-bottom: 2px solid rgba(255, 255, 255, 0.6);
+      background-image: linear-gradient(
+          135deg,
+          transparent 0 45%,
+          rgba(255, 255, 255, 0.6) 45% 55%,
+          transparent 55% 100%
+        ),
+        linear-gradient(
+          45deg,
+          transparent 0 45%,
+          rgba(255, 255, 255, 0.6) 45% 55%,
+          transparent 55% 100%
+        );
+      background-size: 16px 16px;
+      background-position: 0 0, 0 0;
+      background-repeat: repeat;
+      clip-path: polygon(0 0, 100% 0, 80% 100%, 20% 100%);
+      opacity: 0.9;
+    }
+
+    /* Pilota */
+    .ball {
+      position: absolute;
+      width: 50px;
+      height: 50px;
+      border-radius: 50%;
+      background: radial-gradient(circle at 30% 30%, #ffb36b, #ff7a1a);
+      box-shadow: 0 8px 15px rgba(0, 0, 0, 0.6);
+      left: 80px;
+      bottom: 60px;
+      transform-origin: center;
+      overflow: hidden;
+    }
+
+    /* Línies de la pilota */
+    .ball::before,
+    .ball::after {
+      content: "";
+      position: absolute;
+      background: #3b1a0a;
+      opacity: 0.9;
+    }
+
+    .ball::before {
+      width: 4px;
+      height: 100%;
+      left: 50%;
+      top: 0;
+      transform: translateX(-50%);
+    }
+
+    .ball::after {
+      width: 100%;
+      height: 4px;
+      left: 0;
+      top: 50%;
+      transform: translateY(-50%);
+    }
+
+    .ball-line-diag {
+      position: absolute;
+      width: 4px;
+      height: 120%;
+      background: #3b1a0a;
+      opacity: 0.9;
+      left: 50%;
+      top: -10%;
+      transform-origin: center;
+      transform: translateX(-50%) rotate(45deg);
+    }
+
+    /* Text */
+    .label {
+      position: absolute;
+      left: 20px;
+      top: 20px;
+      font-size: 18px;
+      letter-spacing: 0.04em;
+      opacity: 0.85;
+    }
+  </style>
+</head>
+<body>
+  <div class="scene">
+    <div class="label">Pilota de bàsquet: 3 bots i cistella</div>
+
+    <div class="floor-line"></div>
+
+    <div class="hoop-stand"></div>
+    <div class="backboard"></div>
+    <div class="rim"></div>
+    <div class="net"></div>
+
+    <div class="ball" id="ball">
+      <div class="ball-line-diag"></div>
+    </div>
+  </div>
+
+  <script>
+    // Configuració bàsica
+    const ball = document.getElementById("ball");
+
+    const groundY = 60; // alçada del terra (bottom)
+    const startX = 80;
+    const hoopX = 40 + 80 / 2; // posició aproximada de la cistella (des de la dreta)
+    const sceneWidth = 600;
+
+    // Convertim la posició de la cistella a coordenades "left"
+    const hoopLeft = sceneWidth - hoopX - 25; // 25 = radi aproximat de la pilota
+
+    // Seqüència: 3 bots i després trajectòria cap a la cistella
+    // Cada fase té: durada, deltaX, alçada del bot
+    const bounces = [
+      { duration: 600, dx: 90, height: 140 },
+      { duration: 500, dx: 90, height: 100 },
+      { duration: 400, dx: 90, height: 70 },
+    ];
+
+    const shot = {
+      duration: 900,
+      startX: startX + bounces.reduce((s, b) => s + b.dx, 0),
+      endX: hoopLeft,
+      peakHeight: 220,
+    };
+
+    let startTime = null;
+
+    function animate(timestamp) {
+      if (!startTime) startTime = timestamp;
+      const elapsed = timestamp - startTime;
+
+      // Calcula en quina fase estem
+      let t = elapsed;
+      let currentX = startX;
+      let currentY = groundY;
+      let done = false;
+
+      // 1) Bots
+      for (let i = 0; i < bounces.length; i++) {
+        const b = bounces[i];
+        if (t <= b.duration) {
+          const progress = t / b.duration; // 0..1
+          const x = currentX + b.dx * progress;
+
+          // Moviment vertical tipus paràbola (bot)
+          // y = 4h * p * (1 - p), on p és el progrés
+          const bounceY = 4 * b.height * progress * (1 - progress);
+          const y = groundY + bounceY;
+
+          setBallPosition(x, y, progress, true);
+          done = true;
+          break;
+        } else {
+          // Passem a la següent fase
+          currentX += b.dx;
+          t -= b.duration;
+        }
+      }
+
+      // 2) Tir cap a la cistella
+      if (!done) {
+        const shotStartTime =
+          bounces.reduce((s, b) => s + b.duration, 0);
+        const shotElapsed = elapsed - shotStartTime;
+
+        if (shotElapsed <= shot.duration) {
+          const p = shotElapsed / shot.duration; // 0..1
+          const x = shot.startX + (shot.endX - shot.startX) * p;
+
+          // Paràbola suau cap a la cistella
+          // Al principi puja fins a peakHeight i després baixa
+          const arc = 4 * shot.peakHeight * p * (1 - p);
+          const y = groundY + arc;
+
+          setBallPosition(x, y, p, false);
+        } else {
+          // Animació acabada: deixem la pilota dins la cistella
+          setBallPosition(shot.endX, groundY + 10, 1, false);
+          return; // parem el loop
+        }
+      }
+
+      requestAnimationFrame(animate);
+    }
+
+    function setBallPosition(x, y, progress, isBounce) {
+      ball.style.left = x + "px";
+      ball.style.bottom = y + "px";
+
+      // Una mica d'efecte d'escalat i rotació
+      const scale = isBounce
+        ? 1 - 0.1 * Math.abs(0.5 - progress) * 2
+        : 1;
+      const rotation = progress * 360 * (isBounce ? 1 : 1.5);
+
+      ball.style.transform =
+        "scale(" + scale.toFixed(3) + ") rotate(" + rotation + "deg)";
+    }
+
+    // Inicia l'animació
+    requestAnimationFrame(animate);
+  </script>
+</body>
+</html>

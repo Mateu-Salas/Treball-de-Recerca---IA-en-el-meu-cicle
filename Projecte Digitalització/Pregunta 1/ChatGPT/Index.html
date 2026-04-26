@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="ca">
+<head>
+  <meta charset="UTF-8">
+  <title>Font d'Aigua</title>
+  <style>
+    body {
+      margin: 0;
+      background: linear-gradient(#87CEEB, #ffffff);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      font-family: Arial, sans-serif;
+    }
+
+    .fountain {
+      position: relative;
+      width: 200px;
+      height: 300px;
+    }
+
+    .base {
+      position: absolute;
+      bottom: 0;
+      width: 200px;
+      height: 60px;
+      background: #555;
+      border-radius: 50% / 20%;
+    }
+
+    .water-pool {
+      position: absolute;
+      bottom: 40px;
+      width: 200px;
+      height: 40px;
+      background: #1E90FF;
+      border-radius: 50%;
+      opacity: 0.7;
+    }
+
+    .jet {
+      position: absolute;
+      bottom: 80px;
+      left: 50%;
+      width: 6px;
+      height: 120px;
+      background: #00BFFF;
+      transform: translateX(-50%);
+      border-radius: 3px;
+      animation: waterFlow 1s infinite ease-in-out;
+    }
+
+    .drop {
+      position: absolute;
+      width: 8px;
+      height: 12px;
+      background: #00BFFF;
+      border-radius: 50%;
+      animation: fall 1.5s infinite;
+    }
+
+    @keyframes waterFlow {
+      0% { height: 100px; opacity: 0.7; }
+      50% { height: 130px; opacity: 1; }
+      100% { height: 100px; opacity: 0.7; }
+    }
+
+    @keyframes fall {
+      0% { transform: translateY(0); opacity: 1; }
+      100% { transform: translateY(120px); opacity: 0; }
+    }
+  </style>
+</head>
+<body>
+  <div class="fountain">
+    <div class="jet"></div>
+    <div class="water-pool"></div>
+    <div class="base"></div>
+  </div>
+
+  <script>
+    const fountain = document.querySelector('.fountain');
+
+    function createDrop() {
+      const drop = document.createElement('div');
+      drop.classList.add('drop');
+
+      drop.style.left = 95 + Math.random() * 10 + 'px';
+      drop.style.bottom = '200px';
+      drop.style.animationDuration = (1 + Math.random()) + 's';
+
+      fountain.appendChild(drop);
+
+      setTimeout(() => {
+        drop.remove();
+      }, 1500);
+    }
+
+    setInterval(createDrop, 200);
+  </script>
+</body>
+</html>

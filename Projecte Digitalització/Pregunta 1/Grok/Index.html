@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="ca">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Font que treu aigua</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&display=swap');
+
+    body {
+      margin: 0;
+      height: 100vh;
+      background: linear-gradient(to bottom, #0a1f3d, #1e4a7a);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      overflow: hidden;
+      font-family: 'Playfair Display', serif;
+    }
+
+    .container {
+      position: relative;
+      text-align: center;
+    }
+
+    .water-text {
+      font-size: 120px;
+      font-weight: 700;
+      color: #4fc3f7;
+      text-shadow: 
+        0 0 20px #81d4fa,
+        0 0 40px #29b6f6,
+        0 0 60px #0288d1;
+      -webkit-background-clip: text;
+      background-clip: text;
+      position: relative;
+      z-index: 2;
+      animation: wave 4s infinite ease-in-out;
+    }
+
+    @keyframes wave {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-15px); }
+    }
+
+    .drop {
+      position: absolute;
+      width: 8px;
+      height: 20px;
+      background: linear-gradient(transparent, #81d4fa);
+      border-radius: 50% 50% 50% 50% / 60% 60% 40% 40%;
+      opacity: 0.9;
+      pointer-events: none;
+      animation: fall linear forwards;
+      z-index: 1;
+    }
+
+    @keyframes fall {
+      to {
+        transform: translateY(600px);
+        opacity: 0;
+      }
+    }
+
+    .splash {
+      position: absolute;
+      width: 6px;
+      height: 6px;
+      background: #81d4fa;
+      border-radius: 50%;
+      opacity: 0;
+      animation: splashAnim 0.6s forwards;
+    }
+
+    @keyframes splashAnim {
+      0% { transform: scale(0.2); opacity: 0.8; }
+      100% { transform: scale(3); opacity: 0; }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1 class="water-text" id="text">AIGUA</h1>
+  </div>
+
+  <script>
+    const text = document.getElementById('text');
+    const container = document.querySelector('.container');
+
+    // Crear gotes que cauen des del text
+    function createDrop() {
+      const drop = document.createElement('div');
+      drop.classList.add('drop');
+
+      // Posició aleatòria dins l'amplada del text
+      const textRect = text.getBoundingClientRect();
+      const startX = textRect.left + Math.random() * textRect.width;
+      
+      drop.style.left = `${startX - container.getBoundingClientRect().left}px`;
+      drop.style.top = `${textRect.top + textRect.height * 0.6 - container.getBoundingClientRect().top}px`; // surt de la part inferior de les lletres
+
+      // Durada aleatòria (més ràpid o més lent)
+      const duration = Math.random() * 1.2 + 1.4; // entre 1.4s i 2.6s
+      drop.style.animationDuration = `${duration}s`;
+
+      // Mida lleugerament aleatòria
+      const size = Math.random() * 6 + 8;
+      drop.style.width = `${size}px`;
+      drop.style.height = `${size * 2.5}px`;
+
+      container.appendChild(drop);
+
+      // Crear esquitx quan arriba a baix
+      setTimeout(() => {
+        if (drop.parentNode) {
+          createSplash(drop.style.left, parseFloat(drop.style.top) + 550);
+          drop.remove();
+        }
+      }, duration * 1000);
+    }
+
+    function createSplash(x, y) {
+      for (let i = 0; i < 5; i++) {
+        const splash = document.createElement('div');
+        splash.classList.add('splash');
+        
+        splash.style.left = x;
+        splash.style.top = `${y + Math.random() * 20 - 10}px`;
+        
+        const delay = Math.random() * 0.2;
+        splash.style.animationDelay = `${delay}s`;
+        
+        container.appendChild(splash);
+        
+        setTimeout(() => splash.remove(), 1000);
+      }
+    }
+
+    // Generar gotes contínuament
+    function startDripping() {
+      setInterval(() => {
+        // Més probabilitat de diverses gotes alhora
+        const numDrops = Math.random() > 0.7 ? 2 : 1;
+        for (let i = 0; i < numDrops; i++) {
+          setTimeout(createDrop, i * 80);
+        }
+      }, 180);
+    }
+
+    // Iniciar l'efecte
+    window.onload = () => {
+      startDripping();
+      
+      // Gotes addicionals aleatòries
+      setInterval(() => {
+        if (Math.random() > 0.5) createDrop();
+      }, 300);
+    };
+  </script>
+</body>
+</html>

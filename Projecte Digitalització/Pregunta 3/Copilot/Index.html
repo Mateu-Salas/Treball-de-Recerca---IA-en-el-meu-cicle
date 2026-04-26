@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="ca">
+<head>
+  <meta charset="UTF-8" />
+  <title>Cub de Rubik en 6 passos</title>
+  <style>
+    body {
+      margin: 0;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      background: #111;
+      color: #fff;
+      font-family: system-ui, sans-serif;
+    }
+
+    h1 {
+      font-size: 1.2rem;
+      margin-bottom: 0.5rem;
+    }
+
+    p {
+      margin: 0 0 1rem;
+      font-size: 0.9rem;
+      opacity: 0.8;
+    }
+
+    .scene {
+      width: 220px;
+      height: 220px;
+      perspective: 800px;
+      margin-bottom: 1rem;
+    }
+
+    .cube {
+      width: 120px;
+      height: 120px;
+      position: relative;
+      margin: auto;
+      transform-style: preserve-3d;
+      transform: rotateX(-35deg) rotateY(35deg);
+      transition: transform 0.5s ease;
+    }
+
+    /* Cada cara del cub */
+    .face {
+      position: absolute;
+      width: 120px;
+      height: 120px;
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      grid-template-rows: repeat(3, 1fr);
+      gap: 2px;
+      box-sizing: border-box;
+      padding: 2px;
+      background: #000;
+    }
+
+    .sticker {
+      background: #333;
+    }
+
+    /* Colors de cada cara (estil “resolt”) */
+    .face.front  .sticker { background: #00a000; } /* verd */
+    .face.back   .sticker { background: #0000c0; } /* blau */
+    .face.right  .sticker { background: #c00000; } /* vermell */
+    .face.left   .sticker { background: #ffa000; } /* taronja */
+    .face.top    .sticker { background: #ffff40; } /* groc */
+    .face.bottom .sticker { background: #ffffff; } /* blanc */
+
+    /* Posicionament 3D de les cares */
+    .face.front  { transform: translateZ(60px); }
+    .face.back   { transform: rotateY(180deg) translateZ(60px); }
+    .face.right  { transform: rotateY(90deg) translateZ(60px); }
+    .face.left   { transform: rotateY(-90deg) translateZ(60px); }
+    .face.top    { transform: rotateX(90deg) translateZ(60px); }
+    .face.bottom { transform: rotateX(-90deg) translateZ(60px); }
+
+    /* Animació en 6 passos (0 + 5 intermedis + final) */
+    .cube.animate {
+      animation: solveCube 12s linear forwards;
+    }
+
+    @keyframes solveCube {
+      /* 0%: cub força “desfet” (orientació rara) */
+      0% {
+        transform: rotateX(210deg) rotateY(-130deg) rotateZ(45deg);
+      }
+      /* Pas 1 */
+      16% {
+        transform: rotateX(160deg) rotateY(-80deg) rotateZ(20deg);
+      }
+      /* Pas 2 */
+      32% {
+        transform: rotateX(120deg) rotateY(-30deg) rotateZ(10deg);
+      }
+      /* Pas 3 */
+      48% {
+        transform: rotateX(80deg) rotateY(10deg) rotateZ(0deg);
+      }
+      /* Pas 4 */
+      64% {
+        transform: rotateX(40deg) rotateY(25deg) rotateZ(0deg);
+      }
+      /* Pas 5 */
+      80% {
+        transform: rotateX(10deg) rotateY(30deg) rotateZ(0deg);
+      }
+      /* 100%: cub “complet” en una posició neta i estable */
+      100% {
+        transform: rotateX(-35deg) rotateY(35deg) rotateZ(0deg);
+      }
+    }
+
+    button {
+      padding: 0.4rem 0.9rem;
+      border-radius: 4px;
+      border: none;
+      background: #ff9800;
+      color: #111;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    button:hover {
+      background: #ffa726;
+    }
+  </style>
+</head>
+<body>
+  <h1>Cub de Rubik en 6 passos</h1>
+  <p>Prem el botó per veure l’animació del cub passant de “desfet” a complet en 6 fases.</p>
+
+  <div class="scene">
+    <div class="cube" id="cube">
+      <!-- Cara frontal -->
+      <div class="face front">
+        <div class="sticker"></div><div class="sticker"></div><div class="sticker"></div>
+        <div class="sticker"></div><div class="sticker"></div><div class="sticker"></div>
+        <div class="sticker"></div><div class="sticker"></div><div class="sticker"></div>
+      </div>
+      <!-- Cara posterior -->
+      <div class="face back">
+        <div class="sticker"></div><div class="sticker"></div><div class="sticker"></div>
+        <div class="sticker"></div><div class="sticker"></div><div class="sticker"></div>
+        <div class="sticker"></div><div class="sticker"></div><div class="sticker"></div>
+      </div>
+      <!-- Cara dreta -->
+      <div class="face right">
+        <div class="sticker"></div><div class="sticker"></div><div class="sticker"></div>
+        <div class="sticker"></div><div class="sticker"></div><div class="sticker"></div>
+        <div class="sticker"></div><div class="sticker"></div><div class="sticker"></div>
+      </div>
+      <!-- Cara esquerra -->
+      <div class="face left">
+        <div class="sticker"></div><div class="sticker"></div><div class="sticker"></div>
+        <div class="sticker"></div><div class="sticker"></div><div class="sticker"></div>
+        <div class="sticker"></div><div class="sticker"></div><div class="sticker"></div>
+      </div>
+      <!-- Cara superior -->
+      <div class="face top">
+        <div class="sticker"></div><div class="sticker"></div><div class="sticker"></div>
+        <div class="sticker"></div><div class="sticker"></div><div class="sticker"></div>
+        <div class="sticker"></div><div class="sticker"></div><div class="sticker"></div>
+      </div>
+      <!-- Cara inferior -->
+      <div class="face bottom">
+        <div class="sticker"></div><div class="sticker"></div><div class="sticker"></div>
+        <div class="sticker"></div><div class="sticker"></div><div class="sticker"></div>
+        <div class="sticker"></div><div class="sticker"></div><div class="sticker"></div>
+      </div>
+    </div>
+  </div>
+
+  <button id="play">Reinicia animació</button>
+
+  <script>
+    const cube = document.getElementById('cube');
+    const btn = document.getElementById('play');
+
+    function playAnimation() {
+      // Reinicia l’animació traient i tornant a posar la classe
+      cube.classList.remove('animate');
+      void cube.offsetWidth; // força reflow per reiniciar animació
+      cube.classList.add('animate');
+    }
+
+    btn.addEventListener('click', playAnimation);
+
+    // Inicia l’animació en carregar
+    window.addEventListener('load', playAnimation);
+  </script>
+</body>
+</html>

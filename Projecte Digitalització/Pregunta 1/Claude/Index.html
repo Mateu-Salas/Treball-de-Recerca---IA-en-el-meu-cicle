@@ -1,0 +1,416 @@
+<!DOCTYPE html>
+<html lang="ca">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Font d'Aigua</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      background: linear-gradient(180deg, #060f1e 0%, #102240 50%, #060f1e 100%);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      font-family: sans-serif;
+    }
+
+    canvas {
+      display: block;
+    }
+
+    #controls {
+      position: fixed;
+      bottom: 24px;
+      left: 50%;
+      transform: translateX(-50%);
+      display: flex;
+      gap: 20px;
+      align-items: center;
+      background: rgba(255, 255, 255, 0.07);
+      border: 0.5px solid rgba(255, 255, 255, 0.15);
+      border-radius: 24px;
+      padding: 12px 24px;
+      backdrop-filter: blur(8px);
+      z-index: 10;
+    }
+
+    .control-group {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    #controls label {
+      color: rgba(255, 255, 255, 0.65);
+      font-size: 13px;
+    }
+
+    #controls input[type="range"] {
+      width: 100px;
+      accent-color: #60b8ff;
+      cursor: pointer;
+    }
+
+    #controls span {
+      color: #fff;
+      font-size: 13px;
+      min-width: 20px;
+      text-align: center;
+    }
+
+    #toggleBtn {
+      background: rgba(96, 184, 255, 0.15);
+      border: 0.5px solid rgba(96, 184, 255, 0.4);
+      color: #60b8ff;
+      font-size: 13px;
+      padding: 7px 18px;
+      border-radius: 20px;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+
+    #toggleBtn:hover {
+      background: rgba(96, 184, 255, 0.28);
+    }
+  </style>
+</head>
+<body>
+
+<canvas id="c"></canvas>
+
+<div id="controls">
+  <div class="control-group">
+    <label>Força</label>
+    <input type="range" id="powerSlider" min="3" max="12" value="7" step="1">
+    <span id="powerVal">7</span>
+  </div>
+  <div class="control-group">
+    <label>Amplada</label>
+    <input type="range" id="spreadSlider" min="1" max="5" value="3" step="1">
+    <span id="spreadVal">3</span>
+  </div>
+  <button id="toggleBtn">⏸ Pausa</button>
+</div>
+
+<script>
+  /* ─── Canvas setup ─── */
+  const canvas = document.getElementById('c');
+  const ctx    = canvas.getContext('2d');
+
+  function resize() {
+    canvas.width  = window.innerWidth;
+    canvas.height = window.innerHeight;
+  }
+  resize();
+  window.addEventListener('resize', resize);
+
+  /* ─── State ─── */
+  let running = true;
+  let power   = 7;
+  let spread  = 3;
+  let frame   = 0;
+
+  const GRAVITY        = 0.18;
+  const MAX_PARTICLES  = 180;
+
+  /* ─── Controls ─── */
+  document.getElementById('powerSlider').addEventListener('input', e => {
+    power = +e.target.value;
+    document.getElementById('powerVal').textContent = power;
+  });
+  document.getElementById('spreadSlider').addEventListener('input', e => {
+    spread = +e.target.value;
+    document.getElementById('spreadVal').textContent = spread;
+  });
+  document.getElementById('toggleBtn').addEventListener('click', () => {
+    running = !running;
+    document.getElementById('toggleBtn').textContent = running ? '⏸ Pausa' : '▶ Reprendre';
+    if (running) animate();
+  });
+
+  /* ─── Helpers ─── */
+  function getCenter() {
+    return { x: canvas.width / 2, y: canvas.height * 0.68 };
+  }
+  function poolY() {
+    return canvas.height * 0.74;
+  }
+
+  /* ─── Particle class ─── */
+  class Particle {
+    constructor() {
+      this.reset();
+    }
+
+    reset() {
+      const c      = getCenter();
+      const n      = spread;
+      const s      = Math.floor(Math.random() * n);
+      const range  = spread * 0.12;
+      const angle  = -Math.PI / 2 + (s - (n - 1) / 2) * range + (Math.random() - 0.5) * 0.04;
+      const spd    = power * (0.85 + Math.random() * 0.3) * 1.8;
+
+      this.x     = c.x + (Math.random() - 0.5) * 6;
+      this.y     = c.y;
+      this.vx    = Math.cos(angle) * spd * 0.18;
+      this.vy    = Math.sin(angle) * spd;
+      this.alpha = 0.6 + Math.random() * 0.35;
+      this.size  = 1.2 + Math.random() * 1.5;
+    }
+
+    update() {
+      this.vy    += GRAVITY;
+      this.x     += this.vx;
+      this.y     += this.vy;
+      this.alpha -= 0.004;
+
+      if (this.y > poolY() || this.alpha <= 0) {
+        if (this.y > poolY() && Math.random() < 0.3) createSplash(this.x, poolY());
+        this.reset();
+      }
+    }
+
+    draw() {
+      ctx.save();
+      ctx.globalAlpha = this.alpha;
+      ctx.beginPath();
+      ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+      ctx.fillStyle   = 'rgba(160,220,255,0.9)';
+      ctx.shadowColor = 'rgba(100,190,255,0.6)';
+      ctx.shadowBlur  = 4;
+      ctx.fill();
+      ctx.restore();
+    }
+  }
+
+  /* ─── Splash drops ─── */
+  const splashes = [];
+
+  function createSplash(x, y) {
+    for (let i = 0; i < 6; i++) {
+      splashes.push({
+        x, y,
+        vx:    (Math.random() - 0.5) * 3.5,
+        vy:    -(Math.random() * 2.5 + 0.5),
+        alpha: 0.5 + Math.random() * 0.3,
+        size:  1 + Math.random() * 1.2,
+      });
+    }
+  }
+
+  function updateSplashes() {
+    for (let i = splashes.length - 1; i >= 0; i--) {
+      const s = splashes[i];
+      s.vy    += GRAVITY;
+      s.x     += s.vx;
+      s.y     += s.vy;
+      s.alpha -= 0.025;
+      if (s.alpha <= 0 || s.y > poolY() + 10) splashes.splice(i, 1);
+    }
+  }
+
+  function drawSplashes() {
+    for (const s of splashes) {
+      ctx.save();
+      ctx.globalAlpha = s.alpha;
+      ctx.beginPath();
+      ctx.arc(s.x, s.y, s.size, 0, Math.PI * 2);
+      ctx.fillStyle = 'rgba(150,210,255,0.85)';
+      ctx.fill();
+      ctx.restore();
+    }
+  }
+
+  /* ─── Particle pool ─── */
+  const particles = Array.from({ length: MAX_PARTICLES }, () => {
+    const p = new Particle();
+    /* scatter initial positions so they don't all start at once */
+    p.vy -= Math.random() * power * 1.5;
+    return p;
+  });
+
+  /* ─── Draw: background & stars ─── */
+  function drawBackground() {
+    const { width: w, height: h } = canvas;
+    const bg = ctx.createLinearGradient(0, 0, 0, h);
+    bg.addColorStop(0,   '#060f1e');
+    bg.addColorStop(0.5, '#102240');
+    bg.addColorStop(1,   '#060f1e');
+    ctx.fillStyle = bg;
+    ctx.fillRect(0, 0, w, h);
+
+    /* stars */
+    for (let i = 0; i < 80; i++) {
+      const sx = (i * 137.508) % w;
+      const sy = (i * 83.31)   % (h * 0.45);
+      const sr = 0.4 + (i % 3) * 0.3;
+      const sa = 0.3 + Math.sin(frame * 0.01 + i) * 0.15;
+      ctx.beginPath();
+      ctx.arc(sx, sy, sr, 0, Math.PI * 2);
+      ctx.fillStyle = `rgba(255,255,255,${sa})`;
+      ctx.fill();
+    }
+  }
+
+  /* ─── Draw: pool ─── */
+  function drawPool() {
+    const c    = getCenter();
+    const py   = poolY();
+    const w    = canvas.width;
+    const rx   = Math.min(w * 0.28, 220);
+    const ry   = rx * 0.22;
+    const dep  = 32;
+
+    /* shadow under pool */
+    ctx.save();
+    ctx.beginPath();
+    ctx.ellipse(c.x, py + dep, rx, ry * 0.7, 0, 0, Math.PI * 2);
+    ctx.fillStyle = '#091a2e';
+    ctx.fill();
+
+    /* water surface */
+    ctx.beginPath();
+    ctx.ellipse(c.x, py, rx, ry, 0, 0, Math.PI * 2);
+    const wg = ctx.createRadialGradient(c.x, py, rx * 0.1, c.x, py, rx);
+    wg.addColorStop(0,   'rgba(30,120,220,0.7)');
+    wg.addColorStop(0.5, 'rgba(10,60,140,0.75)');
+    wg.addColorStop(1,   'rgba(5,30,80,0.8)');
+    ctx.fillStyle = wg;
+    ctx.fill();
+
+    /* ripple rings */
+    ctx.strokeStyle = 'rgba(80,180,255,0.18)';
+    ctx.lineWidth   = 1;
+    for (let i = 0; i < 3; i++) {
+      const t  = ((frame * 0.008) + i * 0.33) % 1;
+      ctx.globalAlpha = (1 - t) * 0.25;
+      ctx.beginPath();
+      ctx.ellipse(c.x, py, rx * (0.3 + t * 0.65), ry * (0.3 + t * 0.65), 0, 0, Math.PI * 2);
+      ctx.stroke();
+    }
+    ctx.globalAlpha = 1;
+
+    /* rim highlight */
+    ctx.beginPath();
+    ctx.ellipse(c.x, py, rx, ry, 0, Math.PI, Math.PI * 2);
+    const rim = ctx.createLinearGradient(c.x - rx, py - ry, c.x + rx, py + ry);
+    rim.addColorStop(0,   '#3a6080');
+    rim.addColorStop(0.5, '#c8dce8');
+    rim.addColorStop(1,   '#4a7090');
+    ctx.strokeStyle = rim;
+    ctx.lineWidth   = 4;
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  /* ─── Draw: pedestal & nozzle ─── */
+  function drawPedestal() {
+    const c  = getCenter();
+    const py = poolY();
+
+    ctx.save();
+
+    /* column */
+    ctx.beginPath();
+    ctx.roundRect(c.x - 18, py - 110, 36, 112, 4);
+    const pg = ctx.createLinearGradient(c.x - 18, 0, c.x + 18, 0);
+    pg.addColorStop(0,   '#2a4a6a');
+    pg.addColorStop(0.4, '#7ab0d0');
+    pg.addColorStop(0.7, '#5a90b8');
+    pg.addColorStop(1,   '#1a3050');
+    ctx.fillStyle = pg;
+    ctx.fill();
+
+    /* capital */
+    ctx.beginPath();
+    ctx.roundRect(c.x - 28, py - 118, 56, 14, 3);
+    const cg = ctx.createLinearGradient(c.x - 28, 0, c.x + 28, 0);
+    cg.addColorStop(0,   '#2a4a6a');
+    cg.addColorStop(0.5, '#a0c8e0');
+    cg.addColorStop(1,   '#2a4a6a');
+    ctx.fillStyle = cg;
+    ctx.fill();
+
+    /* nozzle */
+    ctx.beginPath();
+    ctx.arc(c.x, c.y, 10, 0, Math.PI * 2);
+    const ng = ctx.createRadialGradient(c.x - 3, c.y - 3, 1, c.x, c.y, 10);
+    ng.addColorStop(0, '#d0eaf8');
+    ng.addColorStop(1, '#2060a0');
+    ctx.fillStyle = ng;
+    ctx.fill();
+
+    ctx.restore();
+  }
+
+  /* ─── Draw: stream lines ─── */
+  function drawStreams() {
+    const c      = getCenter();
+    const n      = spread;
+    const range  = spread * 0.06;
+    const spd    = power * 1.8;
+
+    for (let s = 0; s < n; s++) {
+      const angle = -Math.PI / 2 + (s - (n - 1) / 2) * range * 0.9;
+      const pts   = [];
+
+      for (let t = 0; t <= 1; t += 0.02) {
+        pts.push({
+          x: c.x + Math.cos(angle) * spd * t * 28,
+          y: c.y + Math.sin(angle) * spd * t * 28 + 0.5 * GRAVITY * 100 * t * t,
+        });
+      }
+
+      const last = pts[pts.length - 1];
+      const sg   = ctx.createLinearGradient(c.x, c.y, last.x, last.y);
+      sg.addColorStop(0,   'rgba(180,230,255,0.9)');
+      sg.addColorStop(0.5, 'rgba(80,170,240,0.7)');
+      sg.addColorStop(1,   'rgba(40,120,220,0.3)');
+
+      ctx.save();
+      ctx.beginPath();
+      ctx.moveTo(pts[0].x, pts[0].y);
+      for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i].x, pts[i].y);
+      ctx.strokeStyle  = sg;
+      ctx.lineWidth    = 1.8 + s * 0.1;
+      ctx.lineCap      = 'round';
+      ctx.shadowColor  = 'rgba(120,200,255,0.5)';
+      ctx.shadowBlur   = 6;
+      ctx.stroke();
+      ctx.restore();
+    }
+  }
+
+  /* ─── Main loop ─── */
+  function animate() {
+    if (!running) return;
+    frame++;
+
+    /* update */
+    for (const p of particles) p.update();
+    updateSplashes();
+
+    /* draw */
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    drawBackground();
+    drawPool();
+    drawPedestal();
+    drawStreams();
+    for (const p of particles) p.draw();
+    drawSplashes();
+
+    requestAnimationFrame(animate);
+  }
+
+  animate();
+</script>
+</body>
+</html>
